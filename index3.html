@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>四張卡片配對遊戲</title>
+
+  <style>
+    :root {
+      --background: #fff7ed;
+      --card: #ffffff;
+      --blue: #2563eb;
+      --light-blue: #dbeafe;
+      --green: #16a34a;
+      --yellow: #facc15;
+      --red: #dc2626;
+      --text: #172554;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: var(--background);
+      color: var(--text);
+      font-family: Arial, "Microsoft JhengHei", sans-serif;
+    }
+
+    .game {
+      width: min(560px, 100%);
+      padding: 24px;
+      text-align: center;
+      background: var(--card);
+      border: 5px solid var(--blue);
+      border-radius: 24px;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.2);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-size: clamp(2rem, 6vw, 3rem);
+    }
+
+    .instruction {
+      font-size: 1.25rem;
+      font-weight: bold;
+      line-height: 1.6;
+    }
+
+    .score {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 18px 0;
+    }
+
+    .badge {
+      padding: 10px 18px;
+      background: #fef3c7;
+      border: 2px solid var(--yellow);
+      border-radius: 999px;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    .message {
+      min-height: 55px;
+      margin: 16px 0;
+      font-size: 1.2rem;
+      font-weight: bold;
+      line-height: 1.5;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+      max-width: 380px;
+      margin: 0 auto 22px;
+    }
+
+    .card {
+      min-height: 150px;
+      border: 5px solid #93c5fd;
+      border-radius: 20px;
+      background: #60a5fa;
+      color: transparent;
+      font-size: 4.5rem;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .card:hover,
+    .card:focus {
+      outline: 5px solid var(--yellow);
+      transform: scale(1.04);
+    }
+
+    .card.open,
+    .card.matched {
+      background: var(--light-blue);
+      color: var(--text);
+    }
+
+    .card.matched {
+      background: #bbf7d0;
+      border-color: var(--green);
+      cursor: default;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .control-button {
+      min-height: 55px;
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 14px;
+      color: white;
+      background: var(--blue);
+      cursor: pointer;
+      font-size: 1.05rem;
+      font-weight: bold;
+    }
+
+    .control-button:hover,
+    .control-button:focus {
+      outline: 4px solid var(--yellow);
+    }
+
+    .music-button {
+      background: var(--green);
+    }
+
+    .restart-button {
+      background: var(--red);
+    }
+
+    .help {
+      margin-bottom: 0;
+      color: #475569;
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .screen-reader-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="game" aria-label="四張卡片配對遊戲">
+    <h1>🐾 動物配對 🐾</h1>
+
+    <p class="instruction">
+      撳開兩張卡片，搵出一樣嘅動物。
+    </p>
+
+    <div class="score">
+      <div class="badge">⭐ 分數：<span id="score">0</span></div>
+      <div class="badge">🎯 配對：<span id="matches">0</span>/2</div>
+    </div>
+
+    <div id="message" class="message" aria-live="polite">
+      請撳「開始遊戲」。
+    </div>
+
+    <section id="board" class="board" aria-label="四張配對卡片"></section>
+
+    <div class="controls">
+      <button id="startButton" class="control-button" type="button">
+        ▶️ 開始遊戲
+      </button>
+
+      <button id="restartButton" class="control-button restart-button" type="button">
+        🔄 重新開始
+      </button>
+
+      <button id="musicButton" class="control-button music-button" type="button">
+        🎵 音樂：開
+      </button>
+    </div>
+
+    <p class="help">
+      遊戲開始後，先撳一張卡，再撳另一張卡。
+    </p>
+
+    <div id="screenReaderText" class="screen-reader-only" aria-live="polite"></div>
+  </main>
+
+  <script>
+    const board = document.getElementById("board");
+    const message = document.getElementById("message");
+    const scoreText = document.getElementById("score");
+    const matchesText = document.getElementById("matches");
+    const screenReaderText = document.getElementById("screenReaderText");
+
+    const startButton = document.getElementById("startButton");
+    const restartButton = document.getElementById("restartButton");
+    const musicButton = document.getElementById("musicButton");
+
+    // 只有四張卡片：兩對動物
+    const cardPictures = ["🐶", "🐶", "🐱", "🐱"];
+
+    let cards = [];
+    let firstCard = null;
+    let secondCard = null;
+    let boardLocked = false;
+    let score = 0;
+    let matches = 0;
+
+    let audioContext = null;
+    let musicTimer = null;
+    let musicIsPlaying = false;
+    let musicIndex = 0;
+
+    function getCantoneseVoice() {
+      if (!("speechSynthesis" in window)) {
+        return null;
+      }
+
+      const voices = window.speechSynthesis.getVoices();
+
+      // 優先尋找香港粵語語音
+      return (
+        voices.find(voice => voice.lang.toLowerCase() === "zh-hk") ||
+        voices.find(voice => voice.lang.toLowerCase().startsWith("yue")) ||
+        voices.find(voice =>
+          /cantonese|粵語|廣東話|hong kong|香港/i.test(
+            `${voice.name} ${voice.lang}`
+          )
+        ) ||
+        voices.find(voice => voice.lang.toLowerCase().startsWith("zh"))
+      );
+    }
+
+    function speak(text) {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.lang = "zh-HK";
+
+        const cantoneseVoice = getCantoneseVoice();
+        if (cantoneseVoice) {
+          speech.voice = cantoneseVoice;
+        }
+
+        speech.rate = 0.85;
+        speech.pitch = 1.05;
+        speech.volume = 1;
+
+        window.speechSynthesis.speak(speech);
+      }
+
+      screenReaderText.textContent = text;
+    }
+
+    function shuffle(array) {
+      const newArray = [...array];
+
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const randomIndex = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[randomIndex]] = [
+          newArray[randomIndex],
+          newArray[i]
+        ];
+      }
+
+      return newArray;
+    }
+
+    function createCards() {
+      return shuffle(cardPictures).map((picture, index) => ({
+        id: index,
+        picture,
+        open: false,
+        matched: false
+      }));
+    }
+
+    function renderCards() {
+      board.innerHTML = "";
+
+      cards.forEach(card => {
+        const button = document.createElement("button");
+
+        button.type = "button";
+        button.className = "card";
+        button.setAttribute("aria-label", "未打開卡片");
+
+        if (card.open || card.matched) {
+          button.textContent = card.picture;
+          button.classList.add("open");
+          button.setAttribute("aria-label", `動物圖案 ${card.picture}`);
+        } else {
+          button.textContent = "❔";
+        }
+
+        if (card.matched) {
+          button.classList.add("matched");
+          button.disabled = true;
+          button.setAttribute("aria-label", `已配對 ${card.picture}`);
+        }
+
+        button.addEventListener("click", () => chooseCard(card));
+        board.appendChild(button);
+      });
+    }
+
+    function resetGame() {
+      cards = createCards();
+      firstCard = null;
+      secondCard = null;
+      boardLocked = false;
+      score = 0;
+      matches = 0;
+
+      scoreText.textContent = "0";
+      matchesText.textContent = "0";
+      message.textContent = "請撳兩張卡片，搵出一樣嘅動物。";
+
+      renderCards();
+      speak("遊戲開始。請撳兩張卡片，搵出一樣嘅動物。");
+    }
+
+    function chooseCard(card) {
+      if (boardLocked || card.open || card.matched) {
+        return;
+      }
+
+      card.open = true;
+      renderCards();
+
+      if (!firstCard) {
+        firstCard = card;
+        message.textContent = "第一張卡片打開咗，請再撳一張。";
+        speak("第一張卡片打開咗，請再撳一張。");
+        return;
+      }
+
+      secondCard = card;
+      boardLocked = true;
+
+      if (firstCard.picture === secondCard.picture) {
+        firstCard.matched = true;
+        secondCard.matched = true;
+
+        score += 10;
+        matches += 1;
+
+        scoreText.textContent = String(score);
+        matchesText.textContent = String(matches);
+
+        message.textContent = "配對成功！你好叻！";
+        speak("配對成功！你好叻！");
+        playSound(880, 180, "triangle");
+
+        setTimeout(() => {
+          firstCard = null;
+          secondCard = null;
+          boardLocked = false;
+          renderCards();
+
+          if (matches === 2) {
+            message.textContent = "全部配對完成！恭喜你！";
+            speak("全部配對完成！恭喜你！");
+            playSound(1046, 220, "triangle");
+          }
+        }, 700);
+      } else {
+        message.textContent = "唔係一樣，再試一次。";
+        speak("唔係一樣，再試一次。");
+        playSound(220, 220, "sawtooth");
+
+        setTimeout(() => {
+          firstCard.open = false;
+          secondCard.open = false;
+          firstCard = null;
+          secondCard = null;
+          boardLocked = false;
+          renderCards();
+        }, 900);
+      }
+    }
+
+    function playSound(frequency, duration, type = "sine") {
+      if (!audioContext) {
+        return;
+      }
+
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = type;
+      oscillator.frequency.value = frequency;
+      gain.gain.value = 0.08;
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+
+      oscillator.start();
+
+      setTimeout(() => {
+        oscillator.stop();
+        oscillator.disconnect();
+        gain.disconnect();
+      }, duration);
+    }
+
+    function startMusic() {
+      if (musicIsPlaying) {
+        return;
+      }
+
+      const AudioContext =
+        window.AudioContext || window.webkitAudioContext;
+
+      if (!AudioContext) {
+        musicButton.textContent = "🎵 不支援音樂";
+        return;
+      }
+
+      if (!audioContext) {
+        audioContext = new AudioContext();
+      }
+
+      audioContext.resume();
+      musicIsPlaying = true;
+      musicButton.textContent = "🎵 音樂：關";
+
+      const melody = [392, 523, 659, 523, 440, 587, 698, 587];
+
+      musicTimer = setInterval(() => {
+        if (musicIsPlaying) {
+          playSound(melody[musicIndex], 160, "triangle");
+          musicIndex = (musicIndex + 1) % melody.length;
+        }
+      }, 300);
+    }
+
+    function stopMusic() {
+      musicIsPlaying = false;
+
+      if (musicTimer) {
+        clearInterval(musicTimer);
+        musicTimer = null;
+      }
+
+      musicButton.textContent = "🎵 音樂：開";
+    }
+
+    function toggleMusic() {
+      if (musicIsPlaying) {
+        stopMusic();
+      } else {
+        startMusic();
+      }
+    }
+
+    startButton.addEventListener("click", () => {
+      resetGame();
+      startMusic();
+    });
+
+    restartButton.addEventListener("click", () => {
+      resetGame();
+      startMusic();
+    });
+
+    musicButton.addEventListener("click", toggleMusic);
+
+    // 重新載入語音清單後，瀏覽器才可以找到香港粵語語音
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        getCantoneseVoice();
+      };
+    }
+
+    const welcomeMessage =
+      "歡迎嚟到四張卡片配對遊戲。請撳開始遊戲，搵兩張一樣嘅動物圖。";
+
+    message.textContent = welcomeMessage;
+    speak(welcomeMessage);
+  </script>
+</body>
+</html>
