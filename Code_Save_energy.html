@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>節能小先鋒 - 香港我們的家</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandGreen: '#10B981',
+                        brandBlue: '#0284C7',
+                        brandYellow: '#F59E0B',
+                        brandRed: '#EF4444',
+                    },
+                    boxShadow: {
+                        'ipad': '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                        'glow-green': '0 0 20px rgba(16, 185, 129, 0.5)',
+                        'glow-red': '0 0 20px rgba(239, 68, 68, 0.5)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang HK", "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .ipad-btn {
+            min-height: 64px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ipad-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Earth fever pulse animation */
+        @keyframes feverPulse {
+            0%, 100% { filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.6)); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 28px rgba(239, 68, 68, 0.95)); transform: scale(1.04); }
+        }
+
+        .earth-fever-anim {
+            animation: feverPulse 1.6s infinite ease-in-out;
+        }
+
+        /* Gentle float animation */
+        @keyframes gentleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .animate-float {
+            animation: gentleFloat 3s ease-in-out infinite;
+        }
+
+        /* Attention shake for unpressed buttons */
+        @keyframes shakeHighlight {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px) scale(1.02); }
+            40%, 80% { transform: translateX(6px) scale(1.02); }
+        }
+
+        .btn-warning-shake {
+            animation: shakeHighlight 0.5s ease-in-out 2;
+            border-color: #EF4444 !important;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6) !important;
+        }
+
+        /* Wave bars for TTS voice indicator */
+        @keyframes wavePulse {
+            0%, 100% { height: 6px; }
+            50% { height: 22px; }
+        }
+
+        .wave-bar {
+            width: 4px;
+            background-color: #38BDF8;
+            border-radius: 9999px;
+            animation: wavePulse 0.8s infinite ease-in-out;
+        }
+        .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+
+        /* Confetti Canvas */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen justify-between p-3 sm:p-5 md:p-6 text-slate-800">
+
+    <!-- Confetti Canvas Overlay -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <header class="w-full max-w-5xl mx-auto flex flex-col gap-2 z-20">
+        <div class="flex items-center justify-between bg-white/95 backdrop-blur-md p-3 sm:p-4 rounded-3xl shadow-md border border-sky-100">
+            <div class="flex items-center space-x-3">
+                <span class="text-3xl sm:text-4xl">🇭🇰💡</span>
+                <div>
+                    <h1 class="font-extrabold text-base sm:text-xl text-sky-950 tracking-tight">節能小先鋒</h1>
+                    <p class="text-xs sm:text-sm text-sky-600 font-bold">香港我們的家</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <!-- Toggle Sound SFX -->
+                <button id="btn-sfx" onclick="toggleSFX()" class="ipad-btn bg-sky-100 hover:bg-sky-200 text-sky-800 px-4 py-2.5 rounded-2xl flex items-center font-bold text-sm sm:text-base">
+                    <span id="sfx-icon" class="text-xl mr-1">🔊</span>
+                    <span>音效</span>
+                </button>
+
+                <!-- Reset Game Button -->
+                <button id="btn-reset" onclick="resetGame()" class="ipad-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-2xl flex items-center font-bold text-sm sm:text-base">
+                    <span class="text-xl mr-1">🔄</span>
+                    <span>重來</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Cantonese Speech Status Bar -->
+        <div id="speech-indicator" class="hidden transition-all duration-300 bg-sky-900 text-white text-xs sm:text-sm px-4 py-2.5 rounded-2xl flex items-center justify-between shadow-lg border border-sky-700">
+            <div class="flex items-center space-x-2 overflow-hidden">
+                <span class="text-lg">🗣️</span>
+                <span class="font-black text-amber-300 shrink-0">粵音朗讀：</span>
+                <span id="speech-text-display" class="font-bold truncate text-sky-100">...</span>
+            </div>
+            <div class="flex items-center space-x-1 h-5 pl-2 shrink-0">
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stage Navigation Progress Bar -->
+    <div class="w-full max-w-5xl mx-auto my-2">
+        <div class="bg-white/90 rounded-2xl p-2 shadow-sm flex justify-between items-center text-xs sm:text-sm font-black text-slate-400">
+            <div id="step-0-ind" class="flex-1 text-center py-2.5 rounded-xl transition-all duration-300 bg-sky-500 text-white shadow">導引 🏛️</div>
+            <div id="step-1-ind" class="flex-1 text-center py-2.5 rounded-xl transition-all duration-300">浪費 ⚠️</div>
+            <div id="step-2-ind" class="flex-1 text-center py-2.5 rounded-xl transition-all duration-300">生病 🤒</div>
+            <div id="step-3-ind" class="flex-1 text-center py-2.5 rounded-xl transition-all duration-300">任務 ⚡</div>
+            <div id="step-4-ind" class="flex-1 text-center py-2.5 rounded-xl transition-all duration-300">康復 🥳</div>
+        </div>
+    </div>
+
+    <!-- MAIN INTERACTIVE CONTAINER -->
+    <main class="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center items-center z-10 relative my-1">
+
+        <section id="stage-0" class="w-full bg-white rounded-4xl p-5 sm:p-8 shadow-xl border-4 border-sky-200 flex flex-col items-center text-center">
+            
+            <div class="inline-flex items-center space-x-2 bg-sky-100 text-sky-900 text-xs sm:text-sm px-4 py-1.5 rounded-full font-bold mb-3">
+                <span>🏛️ 國家概要 1.20</span>
+                <span>｜</span>
+                <span>熱愛國家與香港</span>
+            </div>
+            
+            <!-- Poster Card -->
+            <div class="bg-gradient-to-b from-amber-50 to-sky-50 border-3 border-amber-300 p-6 sm:p-8 rounded-3xl max-w-2xl w-full mb-6 shadow-sm relative">
+                <div class="text-6xl sm:text-7xl mb-3 animate-float">🇭🇰 🤝 🌏</div>
+                <h2 class="text-2xl sm:text-3xl font-black text-sky-950 mb-3">
+                    熱愛國家，保護我們的家！
+                </h2>
+                <p class="text-base sm:text-xl text-slate-700 font-bold leading-relaxed">
+                    「香港是我們的家，國家為我們提供穩定的電力與資源。我們熱愛自己的國家和社區，就要好好珍惜這些資源。」
+                </p>
+            </div>
+
+            <!-- Start Button -->
+            <button id="btn-start-game" class="ipad-btn bg-gradient-to-r from-brandGreen to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xl sm:text-2xl px-12 py-4 rounded-3xl shadow-lg flex items-center space-x-3 active:scale-95 transition">
+                <span>開始體驗</span>
+                <span class="text-3xl">🚀</span>
+            </button>
+        </section>
+
+        <section id="stage-1" class="w-full bg-white rounded-4xl p-5 sm:p-8 shadow-xl border-4 border-amber-200 hidden flex-col items-center text-center">
+            
+            <div class="bg-amber-100 text-amber-900 text-xs sm:text-sm font-black px-4 py-1.5 rounded-full mb-2">
+                ⚠️ 第一階段：體驗三個浪費能源的階段
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-black text-slate-800 mb-1">日常生活中有好多浪費行為！</h2>
+            
+            <!-- Unlock Status Indicator Badge -->
+            <div class="mb-4 bg-slate-100 border border-slate-300 rounded-full px-4 py-1.5 text-xs sm:text-sm font-black text-slate-700">
+                進度：<span id="s1-progress-text" class="text-amber-600 font-extrabold">[ 0 / 3 ] 🔒 請按完此頁所有按鈕</span>
+            </div>
+
+            <!-- 3 Waste Hotspot Interactive Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl mb-6">
+                
+                <!-- Waste Item 1 -->
+                <button id="s1-btn-1" class="ipad-btn p-5 rounded-3xl border-3 border-amber-300 bg-amber-50 flex flex-col items-center justify-between text-center hover:bg-amber-100 shadow-sm relative">
+                    <span id="s1-badge-1" class="absolute top-3 right-3 bg-slate-200 text-slate-600 text-xs font-black px-2.5 py-0.5 rounded-full">未按 ⚪</span>
+                    <span class="text-6xl my-2">💡</span>
+                    <div>
+                        <h3 class="font-black text-slate-800 text-lg">開著無人電燈</h3>
+                        <p class="text-xs text-amber-900 font-bold mt-1">房間無人，燈常開</p>
+                    </div>
+                    <span class="mt-3 bg-rose-500 text-white font-extrabold text-xs px-3 py-1 rounded-full">浪費行為 🔴</span>
+                </button>
+
+                <!-- Waste Item 2 -->
+                <button id="s1-btn-2" class="ipad-btn p-5 rounded-3xl border-3 border-sky-300 bg-sky-50 flex flex-col items-center justify-between text-center hover:bg-sky-100 shadow-sm relative">
+                    <span id="s1-badge-2" class="absolute top-3 right-3 bg-slate-200 text-slate-600 text-xs font-black px-2.5 py-0.5 rounded-full">未按 ⚪</span>
+                    <span class="text-6xl my-2">❄️</span>
+                    <div>
+                        <h3 class="font-black text-slate-800 text-lg">冷氣過冷</h3>
+                        <p class="text-xs text-sky-900 font-bold mt-1">16°C 吹不停</p>
+                    </div>
+                    <span class="mt-3 bg-rose-500 text-white font-extrabold text-xs px-3 py-1 rounded-full">浪費行為 🔴</span>
+                </button>
+
+                <!-- Waste Item 3 -->
+                <button id="s1-btn-3" class="ipad-btn p-5 rounded-3xl border-3 border-indigo-300 bg-indigo-50 flex flex-col items-center justify-between text-center hover:bg-indigo-100 shadow-sm relative">
+                    <span id="s1-badge-3" class="absolute top-3 right-3 bg-slate-200 text-slate-600 text-xs font-black px-2.5 py-0.5 rounded-full">未按 ⚪</span>
+                    <span class="text-6xl my-2">📺</span>
+                    <div>
+                        <h3 class="font-black text-slate-800 text-lg">電視沒人看</h3>
+                        <p class="text-xs text-indigo-900 font-bold mt-1">客廳沒人，電視開著</p>
+                    </div>
+                    <span class="mt-3 bg-rose-500 text-white font-extrabold text-xs px-3 py-1 rounded-full">浪費行為 🔴</span>
+                </button>
+            </div>
+
+            <!-- Stage 1 Next Button -->
+            <button id="s1-next-btn" class="ipad-btn opacity-60 bg-slate-400 text-white font-black text-xl px-10 py-4 rounded-3xl shadow-lg flex items-center space-x-2 transition-all">
+                <span id="s1-next-icon" class="text-2xl">🔒</span>
+                <span>下一步：看看地球怎麼了</span>
+            </button>
+        </section>
+
+        <section id="stage-2" class="w-full bg-white rounded-4xl p-5 sm:p-8 shadow-xl border-4 border-rose-200 hidden flex-col items-center text-center">
+            
+            <div class="bg-rose-100 text-rose-800 text-xs sm:text-sm font-black px-4 py-1.5 rounded-full mb-2">
+                🌡️ 第二階段：長期浪費能源，地球與香港發燒了！
+            </div>
+
+            <h2 class="text-2xl sm:text-3xl font-black text-rose-950 mb-1">體溫升高至 <span class="text-rose-600 text-3xl">39.5°C</span>！</h2>
+
+            <!-- Unlock Status Indicator Badge -->
+            <div class="mb-3 bg-slate-100 border border-slate-300 rounded-full px-4 py-1 text-xs sm:text-sm font-black text-slate-700">
+                進度：<span id="s2-progress-text" class="text-rose-600 font-extrabold">[ 0 / 2 ] 🔒 請按完此頁所有按鈕</span>
+            </div>
+
+            <!-- Sick Earth Dynamic SVG -->
+            <div class="w-40 h-40 sm:w-48 sm:h-48 my-2 earth-fever-anim">
+                <svg viewBox="0 0 200 200" class="w-full h-full">
+                    <circle cx="100" cy="100" r="75" fill="#f87171" />
+                    <path d="M 55 60 Q 80 40 105 60 T 125 100 T 80 135 Z" fill="#b91c1c" opacity="0.5"/>
+                    <path d="M 130 65 Q 155 85 145 120 T 115 135 Z" fill="#b91c1c" opacity="0.5"/>
+                    <rect x="70" y="38" width="60" height="22" rx="8" fill="#38bdf8" stroke="#0284c7" stroke-width="2"/>
+                    <text x="100" y="53" font-size="11" font-weight="900" fill="#0369a1" text-anchor="middle">退熱貼</text>
+                    <text x="75" y="95" font-size="22" text-anchor="middle">😵</text>
+                    <text x="125" y="95" font-size="22" text-anchor="middle">😵</text>
+                    <path d="M 80 130 Q 100 110 120 130" stroke="#7f1d1d" stroke-width="5" fill="none" stroke-linecap="round"/>
+                    <circle cx="55" cy="85" r="5" fill="#ef4444"/>
+                    <circle cx="145" cy="85" r="5" fill="#ef4444"/>
+                </svg>
+            </div>
+
+            <!-- 2 Interactive Status Check Buttons -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl mb-5">
+                <button id="s2-btn-1" class="ipad-btn bg-rose-50 border-2 border-rose-300 hover:bg-rose-100 p-4 rounded-2xl flex items-center justify-between font-black text-rose-950 text-sm sm:text-base shadow-sm">
+                    <span class="flex items-center space-x-2">
+                        <span class="text-2xl">🌡️</span>
+                        <span>檢查地球體溫</span>
+                    </span>
+                    <span id="s2-badge-1" class="bg-slate-200 text-slate-600 text-xs px-2.5 py-1 rounded-full font-bold">未按 ⚪</span>
+                </button>
+
+                <button id="s2-btn-2" class="ipad-btn bg-amber-50 border-2 border-amber-300 hover:bg-amber-100 p-4 rounded-2xl flex items-center justify-between font-black text-amber-950 text-sm sm:text-base shadow-sm">
+                    <span class="flex items-center space-x-2">
+                        <span class="text-2xl">🏙️</span>
+                        <span>觀察香港環境</span>
+                    </span>
+                    <span id="s2-badge-2" class="bg-slate-200 text-slate-600 text-xs px-2.5 py-1 rounded-full font-bold">未按 ⚪</span>
+                </button>
+            </div>
+
+            <!-- Proceed Button -->
+            <button id="s2-next-btn" class="ipad-btn opacity-60 bg-slate-400 text-white font-black text-xl px-10 py-4 rounded-3xl shadow-lg flex items-center space-x-2 transition-all">
+                <span id="s2-next-icon" class="text-2xl">🔒</span>
+                <span>化身節能小先鋒！</span>
+            </button>
+        </section>
+
+        <section id="stage-3" class="w-full bg-white rounded-4xl p-4 sm:p-6 shadow-xl border-4 border-emerald-200 hidden flex-col items-center">
+            
+            <div class="bg-emerald-100 text-emerald-900 text-xs sm:text-sm font-black px-4 py-1.5 rounded-full mb-2">
+                💪 第三階段：堅毅關閉電源任務
+            </div>
+
+            <!-- Live Status & Temperature Header -->
+            <div class="w-full max-w-3xl bg-slate-50 rounded-3xl p-3 border-2 border-emerald-200 mb-3 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+                <div class="flex items-center space-x-3">
+                    <div id="stage3-earth-avatar" class="text-4xl transition-all duration-300">😵</div>
+                    <div class="text-left">
+                        <p class="text-xs font-black text-slate-500">地球即時狀態</p>
+                        <p class="text-sm sm:text-base font-black text-slate-800">體溫：<span id="live-temp-display" class="text-rose-600 font-black">39.5°C</span></p>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-2/3">
+                    <div class="flex justify-between text-xs font-black text-slate-700 mb-1">
+                        <span>💪 堅持完成關電源任務</span>
+                        <span id="task-count-text" class="text-emerald-600 font-bold">[ 0 / 4 ] 已完成</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-6 rounded-full overflow-hidden p-1 shadow-inner">
+                        <div id="live-health-bar" class="bg-gradient-to-r from-amber-400 to-emerald-500 h-full rounded-full transition-all duration-500 w-[15%]"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4 Interactive Game Task Buttons -->
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-3xl mb-4">
+                
+                <!-- Task 1: 關閉電燈 -->
+                <button id="task-tile-1" class="ipad-btn bg-amber-50 border-3 border-amber-300 rounded-3xl p-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm relative hover:bg-amber-100">
+                    <span id="task-status-1" class="absolute top-2 right-2 bg-rose-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full">未關 🔴</span>
+                    <div id="task-icon-1" class="text-5xl my-1">💡</div>
+                    <h3 id="task-title-1" class="font-black text-slate-800 text-base sm:text-lg">關閉電燈</h3>
+                    <p id="task-sub-1" class="text-xs text-amber-900 font-bold mt-1">點擊關燈 🔴</p>
+                </button>
+
+                <!-- Task 2: 調高冷氣 -->
+                <button id="task-tile-2" class="ipad-btn bg-sky-50 border-3 border-sky-300 rounded-3xl p-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm relative hover:bg-sky-100">
+                    <span id="task-status-2" class="absolute top-2 right-2 bg-rose-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full">未調 🔴</span>
+                    <div id="task-icon-2" class="text-5xl my-1">❄️</div>
+                    <h3 id="task-title-2" class="font-black text-slate-800 text-base sm:text-lg">調高冷氣</h3>
+                    <p id="task-sub-2" class="text-xs text-sky-900 font-bold mt-1">調高至 25.5°C 🌡️</p>
+                </button>
+
+                <!-- Task 3: 關閉電視 -->
+                <button id="task-tile-3" class="ipad-btn bg-indigo-50 border-3 border-indigo-300 rounded-3xl p-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm relative hover:bg-indigo-100">
+                    <span id="task-status-3" class="absolute top-2 right-2 bg-rose-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full">未關 🔴</span>
+                    <div id="task-icon-3" class="text-5xl my-1">📺</div>
+                    <h3 id="task-title-3" class="font-black text-slate-800 text-base sm:text-lg">關閉電視</h3>
+                    <p id="task-sub-3" class="text-xs text-indigo-900 font-bold mt-1">點擊關電視 📺</p>
+                </button>
+
+                <!-- Task 4: 拔掉插頭 -->
+                <button id="task-tile-4" class="ipad-btn bg-teal-50 border-3 border-teal-300 rounded-3xl p-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm relative hover:bg-teal-100">
+                    <span id="task-status-4" class="absolute top-2 right-2 bg-rose-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full">未拔 🔴</span>
+                    <div id="task-icon-4" class="text-5xl my-1">🔌</div>
+                    <h3 id="task-title-4" class="font-black text-slate-800 text-base sm:text-lg">拔掉插頭</h3>
+                    <p id="task-sub-4" class="text-xs text-teal-900 font-bold mt-1">拔掉待機插頭 ⚡</p>
+                </button>
+
+            </div>
+
+            <!-- Stage 3 Next Button -->
+            <button id="s3-next-btn" class="ipad-btn opacity-60 bg-slate-400 text-white font-black text-xl px-10 py-3.5 rounded-3xl shadow-lg flex items-center space-x-2 transition-all">
+                <span id="s3-next-icon" class="text-2xl">🔒</span>
+                <span>前往地球康復階段</span>
+            </button>
+        </section>
+
+        <section id="stage-4" class="w-full bg-white rounded-4xl p-5 sm:p-7 shadow-xl border-4 border-emerald-300 hidden flex-col items-center text-center">
+            
+            <div class="bg-gradient-to-r from-emerald-500 to-sky-500 text-white text-base sm:text-xl font-black px-6 py-2 rounded-full shadow-md mb-2 animate-bounce">
+                🎉 地球恢復健康！發出歡呼聲！ 🎉
+            </div>
+
+            <h2 class="text-2xl sm:text-3xl font-black text-slate-800 mb-1">
+                體溫恢復正常 <span class="text-emerald-600">36.5°C</span>！
+            </h2>
+            <p class="text-slate-600 font-bold text-xs sm:text-sm mb-2">
+                不使用時要關掉，才可以節約能源、保護地球。
+            </p>
+
+            <!-- Cheerful Earth SVG Graphic -->
+            <div class="w-36 h-36 sm:w-44 sm:h-44 my-1 animate-float">
+                <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-xl">
+                    <circle cx="100" cy="100" r="75" fill="#38bdf8" />
+                    <path d="M 55 60 Q 80 40 105 60 T 125 100 T 80 135 Z" fill="#22c55e"/>
+                    <path d="M 130 65 Q 155 85 145 120 T 115 135 Z" fill="#22c55e"/>
+                    <path d="M 85 20 Q 100 5 115 20 Q 100 35 85 20 Z" fill="#4ade80" stroke="#166534" stroke-width="2"/>
+                    <text x="100" y="24" font-size="9" font-weight="900" fill="#14532d" text-anchor="middle">小先鋒</text>
+                    <circle cx="75" cy="90" r="8" fill="#1e293b"/>
+                    <circle cx="125" cy="90" r="8" fill="#1e293b"/>
+                    <circle cx="78" cy="87" r="3" fill="#ffffff"/>
+                    <circle cx="128" cy="87" r="3" fill="#ffffff"/>
+                    <circle cx="65" cy="105" r="7" fill="#f43f5e" opacity="0.6"/>
+                    <circle cx="135" cy="105" r="7" fill="#f43f5e" opacity="0.6"/>
+                    <path d="M 75 110 Q 100 140 125 110" stroke="#1e293b" stroke-width="5" fill="none" stroke-linecap="round"/>
+                </svg>
+            </div>
+
+            <!-- Classroom Habit Pledge Section -->
+            <div class="w-full max-w-2xl bg-sky-50 border-2 border-sky-200 rounded-3xl p-4 text-left my-2">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-2xl">🎒</span>
+                        <h3 class="font-black text-sky-950 text-sm sm:text-base">生活串連：課堂教具用後關電源</h3>
+                    </div>
+                    <span id="s4-progress-text" class="text-xs font-black text-sky-700 bg-sky-200 px-3 py-1 rounded-full">[ 0 / 4 ] 請全按解鎖</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button id="pledge-btn-1" class="ipad-btn p-3 bg-white rounded-2xl border-2 border-sky-300 flex items-center justify-between font-black text-xs sm:text-sm text-sky-900 hover:bg-sky-100">
+                        <span class="flex items-center space-x-2">
+                            <span>📽️</span>
+                            <span>關閉課室投影機</span>
+                        </span>
+                        <span id="pledge-icon-1" class="text-slate-400">⚪</span>
+                    </button>
+
+                    <button id="pledge-btn-2" class="ipad-btn p-3 bg-white rounded-2xl border-2 border-sky-300 flex items-center justify-between font-black text-xs sm:text-sm text-sky-900 hover:bg-sky-100">
+                        <span class="flex items-center space-x-2">
+                            <span>📱</span>
+                            <span>關閉 iPad 平板電腦</span>
+                        </span>
+                        <span id="pledge-icon-2" class="text-slate-400">⚪</span>
+                    </button>
+
+                    <button id="pledge-btn-3" class="ipad-btn p-3 bg-white rounded-2xl border-2 border-sky-300 flex items-center justify-between font-black text-xs sm:text-sm text-sky-900 hover:bg-sky-100">
+                        <span class="flex items-center space-x-2">
+                            <span>🖥️</span>
+                            <span>關閉電子白板</span>
+                        </span>
+                        <span id="pledge-icon-3" class="text-slate-400">⚪</span>
+                    </button>
+
+                    <button id="pledge-btn-4" class="ipad-btn p-3 bg-white rounded-2xl border-2 border-sky-300 flex items-center justify-between font-black text-xs sm:text-sm text-sky-900 hover:bg-sky-100">
+                        <span class="flex items-center space-x-2">
+                            <span>💡</span>
+                            <span>關閉教室電燈</span>
+                        </span>
+                        <span id="pledge-icon-4" class="text-slate-400">⚪</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Finish Button -->
+            <button id="s4-finish-btn" class="ipad-btn opacity-60 bg-slate-400 text-white font-black text-lg sm:text-xl px-10 py-3.5 rounded-3xl shadow-lg flex items-center space-x-2 transition-all">
+                <span id="s4-finish-icon">🔒</span>
+                <span>完成任務，再玩一次</span>
+            </button>
+        </section>
+
+    </main>
+
+    <!-- JAVASCRIPT LOGIC ENGINE -->
+    <script>
+        let audioCtx = null;
+        let isSFXEnabled = true;
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTone(freq, type, duration, gainVal = 0.15) {
+            if (!isSFXEnabled) return;
+            initAudioContext();
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.log("Audio FX error", e);
+            }
+        }
+
+        function playClickSound() { playTone(650, 'sine', 0.08, 0.15); }
+        function playSwitchSound() {
+            playTone(400, 'square', 0.08, 0.2);
+            setTimeout(() => playTone(250, 'sine', 0.12, 0.2), 70);
+        }
+        function playLockedBuzzer() {
+            playTone(180, 'sawtooth', 0.2, 0.25);
+            setTimeout(() => playTone(140, 'sawtooth', 0.25, 0.25), 100);
+        }
+        function playSuccessChime() {
+            [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                setTimeout(() => playTone(freq, 'sine', 0.15, 0.2), idx * 80);
+            });
+        }
+        function playVictoryFanfare() {
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                setTimeout(() => playTone(freq, 'triangle', 0.28, 0.25), idx * 120);
+            });
+        }
+
+        function toggleSFX() {
+            isSFXEnabled = !isSFXEnabled;
+            document.getElementById('sfx-icon').textContent = isSFXEnabled ? '🔊' : '🔇';
+            speakCantonese(isSFXEnabled ? "開啟音效" : "關閉音效");
+        }
+
+        let cantoneseVoice = null;
+
+        function loadCantoneseVoice() {
+            if (!('speechSynthesis' in window)) return;
+            const voices = window.speechSynthesis.getVoices();
+            // Strictly target Hong Kong / Cantonese voices to avoid Mandarin
+            cantoneseVoice = voices.find(v => {
+                const lang = (v.lang || '').toLowerCase();
+                const name = (v.name || '').toLowerCase();
+                return lang.includes('zh-hk') || 
+                       lang.includes('yue') || 
+                       name.includes('hong kong') || 
+                       name.includes('cantonese') || 
+                       name.includes('sin-ji') || 
+                       name.includes('hiugaai') || 
+                       name.includes('hiumaan') || 
+                       name.includes('wanlung');
+            });
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = loadCantoneseVoice;
+            loadCantoneseVoice();
+        }
+
+        function showSpeechUI(text) {
+            const ind = document.getElementById('speech-indicator');
+            const disp = document.getElementById('speech-text-display');
+            if (ind && disp) {
+                disp.textContent = text;
+                ind.classList.remove('hidden');
+            }
+        }
+
+        function hideSpeechUI() {
+            const ind = document.getElementById('speech-indicator');
+            if (ind) {
+                ind.classList.add('hidden');
+            }
+        }
+
+        function speakCantonese(text, onEndCallback) {
+            if (!('speechSynthesis' in window)) {
+                if (onEndCallback) onEndCallback();
+                return;
+            }
+
+            window.speechSynthesis.cancel(); // Stop active speech
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-HK'; // Standard Hong Kong Cantonese locale
+            utterance.rate = 0.88;
+            utterance.pitch = 1.0;
+
+            if (!cantoneseVoice) {
+                loadCantoneseVoice();
+            }
+            if (cantoneseVoice) {
+                utterance.voice = cantoneseVoice;
+            }
+
+            showSpeechUI(text);
+
+            utterance.onend = () => {
+                hideSpeechUI();
+                if (onEndCallback) onEndCallback();
+            };
+
+            utterance.onerror = () => {
+                hideSpeechUI();
+                if (onEndCallback) onEndCallback();
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        /* Auto stage speech introductions */
+        const autoStageSpeeches = {
+            0: "熱愛國家，保護我們的家！香港是我們的家，國家為我們提供穩定的電力與資源。我們熱愛自己的國家和社區，就要好好珍惜這些資源。",
+            1: "第一階段，體驗浪費能源。生活中我們常開著無人電燈、冷氣過冷，電視沒人看。請按完這一頁的所有按鈕！",
+            2: "第二階段，長期浪費能源，地球與香港發燒生病了！體溫升至三十九點五度。請按完所有檢測按鈕！",
+            3: "第三階段，化身節能小先鋒！堅毅關閉所有不必要電源！",
+            4: "太棒了！地球恢復健康！記得課堂教具用完隨手關電源呀！請點選所有課堂承諾！"
+        };
+
+        let currentStage = 0;
+        
+        let stage1Pressed = new Set(); // Needs 3
+        let stage2Pressed = new Set(); // Needs 2
+        let stage3Pressed = new Set(); // Needs 4
+        let stage4Pressed = new Set(); // Needs 4
+
+        const WARNING_SPEECH = "請先按完這一頁的所有按鈕！";
+
+        function updateStageIndicators(stageNum) {
+            for (let i = 0; i <= 4; i++) {
+                const ind = document.getElementById(`step-${i}-ind`);
+                if (i === stageNum) {
+                    ind.className = "flex-1 text-center py-2.5 rounded-xl transition-all duration-300 bg-sky-500 text-white font-black shadow";
+                } else if (i < stageNum) {
+                    ind.className = "flex-1 text-center py-2.5 rounded-xl transition-all duration-300 bg-emerald-100 text-emerald-800 font-black";
+                } else {
+                    ind.className = "flex-1 text-center py-2.5 rounded-xl transition-all duration-300 text-slate-400 font-bold";
+                }
+            }
+        }
+
+        function goToStage(stageNum) {
+            currentStage = stageNum;
+
+            for (let i = 0; i <= 4; i++) {
+                const el = document.getElementById(`stage-${i}`);
+                if (el) {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+            }
+
+            const target = document.getElementById(`stage-${stageNum}`);
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.add('flex');
+            }
+
+            updateStageIndicators(stageNum);
+
+            // AUTO-PLAY CANTANOSE SPEECH ON PAGE ENTER
+            setTimeout(() => {
+                speakCantonese(autoStageSpeeches[stageNum]);
+            }, 200);
+
+            if (stageNum === 4) {
+                playVictoryFanfare();
+                launchConfetti();
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function highlightRemainingButtons(btnIds) {
+            btnIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.add('btn-warning-shake');
+                    setTimeout(() => el.classList.remove('btn-warning-shake'), 1200);
+                }
+            });
+        }
+
+        /* --- STAGE 0 LOGIC --- */
+        function registerStage0Events() {
+            document.getElementById('btn-start-game').addEventListener('click', () => {
+                initAudioContext();
+                playClickSound();
+                speakCantonese("開始體驗！", () => goToStage(1));
+            });
+        }
+
+        /* --- STAGE 1 LOGIC --- */
+        function registerStage1Events() {
+            const items = [
+                { id: 1, text: "開著無人電燈" },
+                { id: 2, text: "冷氣過冷" },
+                { id: 3, text: "電視沒人看" }
+            ];
+
+            items.forEach(item => {
+                const btn = document.getElementById(`s1-btn-${item.id}`);
+                btn.addEventListener('click', () => {
+                    playSwitchSound();
+                    stage1Pressed.add(item.id);
+
+                    btn.classList.remove('bg-amber-50', 'bg-sky-50', 'bg-indigo-50');
+                    btn.classList.add('bg-rose-100', 'border-rose-400');
+                    const badge = document.getElementById(`s1-badge-${item.id}`);
+                    badge.className = "absolute top-3 right-3 bg-rose-600 text-white text-xs font-black px-2.5 py-0.5 rounded-full";
+                    badge.textContent = "已按完 ✅";
+
+                    // Speak exact button text
+                    speakCantonese(`${item.text}！`);
+
+                    updateStage1Progress();
+                });
+            });
+
+            document.getElementById('s1-next-btn').addEventListener('click', () => {
+                if (stage1Pressed.size < 3) {
+                    playLockedBuzzer();
+                    speakCantonese(WARNING_SPEECH);
+
+                    const unpressed = [];
+                    for (let i = 1; i <= 3; i++) {
+                        if (!stage1Pressed.has(i)) unpressed.push(`s1-btn-${i}`);
+                    }
+                    highlightRemainingButtons(unpressed);
+                } else {
+                    playClickSound();
+                    speakCantonese("下一步：看看地球怎麼了", () => goToStage(2));
+                }
+            });
+        }
+
+        function updateStage1Progress() {
+            const count = stage1Pressed.size;
+            const progressText = document.getElementById('s1-progress-text');
+            const nextBtn = document.getElementById('s1-next-btn');
+            const nextIcon = document.getElementById('s1-next-icon');
+
+            if (count === 3) {
+                progressText.className = "text-emerald-600 font-extrabold";
+                progressText.textContent = "[ 3 / 3 ] 🔓 已全部按完，可以前進！";
+
+                nextBtn.className = "ipad-btn bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-black text-xl px-10 py-4 rounded-3xl shadow-lg flex items-center space-x-2 animate-pulse";
+                nextIcon.textContent = "🔓";
+                playSuccessChime();
+            } else {
+                progressText.textContent = `[ ${count} / 3 ] 🔒 請按完此頁所有按鈕`;
+            }
+        }
+
+        /* --- STAGE 2 LOGIC --- */
+        function registerStage2Events() {
+            const btn1 = document.getElementById('s2-btn-1');
+            const btn2 = document.getElementById('s2-btn-2');
+
+            btn1.addEventListener('click', () => {
+                playClickSound();
+                stage2Pressed.add(1);
+                btn1.classList.add('bg-rose-200', 'border-rose-500');
+                document.getElementById('s2-badge-1').className = "bg-rose-600 text-white text-xs px-2.5 py-1 rounded-full font-bold";
+                document.getElementById('s2-badge-1').textContent = "已檢查 ✅";
+
+                speakCantonese("檢查地球體溫！發高燒至 39.5 度！");
+                updateStage2Progress();
+            });
+
+            btn2.addEventListener('click', () => {
+                playClickSound();
+                stage2Pressed.add(2);
+                btn2.classList.add('bg-amber-200', 'border-amber-500');
+                document.getElementById('s2-badge-2').className = "bg-amber-600 text-white text-xs px-2.5 py-1 rounded-full font-bold";
+                document.getElementById('s2-badge-2').textContent = "已觀察 ✅";
+
+                speakCantonese("觀察香港環境！天氣變熱，影響我們的生活安全！");
+                updateStage2Progress();
+            });
+
+            document.getElementById('s2-next-btn').addEventListener('click', () => {
+                if (stage2Pressed.size < 2) {
+                    playLockedBuzzer();
+                    speakCantonese(WARNING_SPEECH);
+
+                    const unpressed = [];
+                    if (!stage2Pressed.has(1)) unpressed.push('s2-btn-1');
+                    if (!stage2Pressed.has(2)) unpressed.push('s2-btn-2');
+                    highlightRemainingButtons(unpressed);
+                } else {
+                    playClickSound();
+                    speakCantonese("化身節能小先鋒！", () => goToStage(3));
+                }
+            });
+        }
+
+        function updateStage2Progress() {
+            const count = stage2Pressed.size;
+            const progressText = document.getElementById('s2-progress-text');
+            const nextBtn = document.getElementById('s2-next-btn');
+            const nextIcon = document.getElementById('s2-next-icon');
+
+            if (count === 2) {
+                progressText.className = "text-emerald-600 font-extrabold";
+                progressText.textContent = "[ 2 / 2 ] 🔓 已全部按完，可以前進！";
+
+                nextBtn.className = "ipad-btn bg-gradient-to-r from-emerald-500 to-brandGreen hover:from-emerald-600 hover:to-emerald-700 text-white font-black text-xl px-10 py-4 rounded-3xl shadow-lg flex items-center space-x-2 animate-pulse";
+                nextIcon.textContent = "🔓";
+                playSuccessChime();
+            } else {
+                progressText.textContent = `[ ${count} / 2 ] 🔒 請按完此頁所有按鈕`;
+            }
+        }
+
+        /* --- STAGE 3 LOGIC --- */
+        function registerStage3Events() {
+            const taskConfigs = [
+                { id: 1, speech: "關閉電燈！", tileBg: 'bg-amber-100 border-amber-400', iconText: '💡', subText: '電燈已關閉 🟢' },
+                { id: 2, speech: "調高冷氣！", tileBg: 'bg-sky-100 border-sky-400', iconText: '🌡️', subText: '已調至 25.5°C 🟢' },
+                { id: 3, speech: "關閉電視！", tileBg: 'bg-indigo-100 border-indigo-400', iconText: '📺', subText: '電視已關閉 🟢' },
+                { id: 4, speech: "拔掉插頭！", tileBg: 'bg-teal-100 border-teal-400', iconText: '🔌', subText: '插頭已拔掉 🟢' }
+            ];
+
+            taskConfigs.forEach(cfg => {
+                const tile = document.getElementById(`task-tile-${cfg.id}`);
+                tile.addEventListener('click', () => {
+                    playSwitchSound();
+                    stage3Pressed.add(cfg.id);
+
+                    const status = document.getElementById(`task-status-${cfg.id}`);
+                    const icon = document.getElementById(`task-icon-${cfg.id}`);
+                    const sub = document.getElementById(`task-sub-${cfg.id}`);
+
+                    tile.className = `ipad-btn ${cfg.tileBg} border-3 rounded-3xl p-4 flex flex-col items-center justify-center text-center shadow-md relative`;
+                    status.className = "absolute top-2 right-2 bg-emerald-600 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full";
+                    status.textContent = "已關閉 ✅";
+                    icon.textContent = cfg.iconText;
+                    sub.textContent = cfg.subText;
+
+                    updateStage3Progress();
+                    speakCantonese(cfg.speech);
+                });
+            });
+
+            document.getElementById('s3-next-btn').addEventListener('click', () => {
+                if (stage3Pressed.size < 4) {
+                    playLockedBuzzer();
+                    speakCantonese(WARNING_SPEECH);
+
+                    const unpressed = [];
+                    for (let i = 1; i <= 4; i++) {
+                        if (!stage3Pressed.has(i)) unpressed.push(`task-tile-${i}`);
+                    }
+                    highlightRemainingButtons(unpressed);
+                } else {
+                    playClickSound();
+                    speakCantonese("前往地球康復階段！", () => goToStage(4));
+                }
+            });
+        }
+
+        function updateStage3Progress() {
+            const count = stage3Pressed.size;
+            document.getElementById('task-count-text').textContent = `[ ${count} / 4 ] 已完成`;
+
+            const temps = ['39.5°C', '38.5°C', '37.5°C', '36.8°C', '36.5°C'];
+            const avatars = ['😵', '🤒', '😐', '😊', '🥳'];
+            
+            document.getElementById('live-temp-display').textContent = temps[count];
+            document.getElementById('stage3-earth-avatar').textContent = avatars[count];
+
+            const percentage = 15 + (count * 21.25);
+            document.getElementById('live-health-bar').style.width = `${percentage}%`;
+
+            const nextBtn = document.getElementById('s3-next-btn');
+            const nextIcon = document.getElementById('s3-next-icon');
+
+            if (count === 4) {
+                nextBtn.className = "ipad-btn bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-xl px-10 py-3.5 rounded-3xl shadow-lg flex items-center space-x-2 animate-pulse";
+                nextIcon.textContent = "🔓";
+                playSuccessChime();
+            }
+        }
+
+        /* --- STAGE 4 LOGIC --- */
+        function registerStage4Events() {
+            const pledges = [
+                { id: 1, text: "關閉課室投影機" },
+                { id: 2, text: "關閉 iPad 平板電腦" },
+                { id: 3, text: "關閉電子白板" },
+                { id: 4, text: "關閉教室電燈" }
+            ];
+
+            pledges.forEach(item => {
+                const btn = document.getElementById(`pledge-btn-${item.id}`);
+                btn.addEventListener('click', () => {
+                    playClickSound();
+                    stage4Pressed.add(item.id);
+
+                    btn.className = "ipad-btn p-3 bg-emerald-100 rounded-2xl border-2 border-emerald-400 flex items-center justify-between font-black text-xs sm:text-sm text-emerald-950 shadow-sm";
+                    document.getElementById(`pledge-icon-${item.id}`).textContent = '✅';
+
+                    updateStage4Progress();
+                    speakCantonese(item.text);
+                });
+            });
+
+            document.getElementById('s4-finish-btn').addEventListener('click', () => {
+                if (stage4Pressed.size < 4) {
+                    playLockedBuzzer();
+                    speakCantonese(WARNING_SPEECH);
+
+                    const unpressed = [];
+                    for (let i = 1; i <= 4; i++) {
+                        if (!stage4Pressed.has(i)) unpressed.push(`pledge-btn-${i}`);
+                    }
+                    highlightRemainingButtons(unpressed);
+                } else {
+                    playVictoryFanfare();
+                    launchConfetti();
+                    speakCantonese("恭喜完成任務！節約能源、保護地球！", () => resetGame());
+                }
+            });
+        }
+
+        function updateStage4Progress() {
+            const count = stage4Pressed.size;
+            document.getElementById('s4-progress-text').textContent = `[ ${count} / 4 ] 已點選`;
+
+            const btn = document.getElementById('s4-finish-btn');
+            const icon = document.getElementById('s4-finish-icon');
+
+            if (count === 4) {
+                btn.className = "ipad-btn bg-brandGreen hover:bg-emerald-600 text-white font-black text-lg sm:text-xl px-10 py-3.5 rounded-3xl shadow-lg flex items-center space-x-2 animate-bounce";
+                icon.textContent = "🥳";
+                playSuccessChime();
+            }
+        }
+
+        function launchConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#10B981', '#0284C7', '#F59E0B', '#EF4444', '#8B5CF6'];
+
+            for (let i = 0; i < 110; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    size: Math.random() * 10 + 6,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    vy: Math.random() * 3.5 + 2,
+                    vx: Math.random() * 2 - 1,
+                    rot: Math.random() * 360
+                });
+            }
+
+            let timer = 0;
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.y += p.vy;
+                    p.x += p.vx;
+                    p.rot += 3;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rot * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                });
+
+                timer++;
+                if (timer < 220) {
+                    requestAnimationFrame(render);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            render();
+        }
+
+        function resetGame() {
+            stage1Pressed.clear();
+            stage2Pressed.clear();
+            stage3Pressed.clear();
+            stage4Pressed.clear();
+
+            // Reset Stage 1
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`s1-btn-${i}`);
+                if (btn) {
+                    btn.className = "ipad-btn p-5 rounded-3xl border-3 border-amber-300 bg-amber-50 flex flex-col items-center justify-between text-center hover:bg-amber-100 shadow-sm relative";
+                    const badge = document.getElementById(`s1-badge-${i}`);
+                    badge.className = "absolute top-3 right-3 bg-slate-200 text-slate-600 text-xs font-black px-2.5 py-0.5 rounded-full";
+                    badge.textContent = "未按 ⚪";
+                }
+            }
+            document.getElementById('s1-progress-text').className = "text-amber-600 font-extrabold";
+            document.getElementById('s1-progress-text').textContent = "[ 0 / 3 ] 🔒 請按完此頁所有按鈕";
+            document.getElementById('s1-next-btn').className = "ipad-btn opacity-60 bg-slate-400 text-white font-black text-xl px-10 py-4 rounded-3xl shadow-lg flex items-center space-x-2 transition-all";
+            document.getElementById('s1-next-icon').textContent = "🔒";
+
+            // Reset Stage 2
+            document.getElementById('s2-btn-1').className = "ipad-btn bg-rose-50 border-2 border-rose-300 hover:bg-rose-100 p-4 rounded-2xl flex items-center justify-between font-black text-rose-950 text-sm sm:text-base shadow-sm";
+            document.getElementById('s2-badge-1').className = "bg-slate-200 text-slate-600 text-xs px-2.5 py-1 rounded-full font-bold";
+            document.getElementById('s2-badge-1').textContent = "未按 ⚪";
+
+            document.getElementById('s2-btn-2').className = "ipad-btn bg-amber-50 border-2 border-amber-300 hover:bg-amber-100 p-4 rounded-2xl flex items-center justify-between font-black text-amber-950 text-sm sm:text-base shadow-sm";
+            document.getElementById('s2-badge-2').className = "bg-slate-200 text-slate-600 text-xs px-2.5 py-1 rounded-full font-bold";
+            document.getElementById('s2-badge-2').textContent = "未按 ⚪";
+
+            document.getElementById('s2-progress-text').className = "text-rose-600 font-extrabold";
+            document.getElementById('s2-progress-text').textContent = "[ 0 / 2 ] 🔒 請按完此頁所有按鈕";
+            document.getElementById('s2-next-btn').className = "ipad-btn opacity-60 bg-slate-400 text-white font-black text-xl px-10 py-4 rounded-3xl shadow-lg flex items-center space-x-2 transition-all";
+            document.getElementById('s2-next-icon').textContent = "🔒";
+
+            // Reset Stage 3
+            const defaultTasks = [
+                { id: 1, icon: '💡', bg: 'bg-amber-50 border-amber-300', sub: '點擊關燈 🔴' },
+                { id: 2, icon: '❄️', bg: 'bg-sky-50 border-sky-300', sub: '調高至 25.5°C 🌡️' },
+                { id: 3, icon: '📺', bg: 'bg-indigo-50 border-indigo-300', sub: '點擊關電視 📺' },
+                { id: 4, icon: '🔌', bg: 'bg-teal-50 border-teal-300', sub: '拔掉待機插頭 ⚡' }
+            ];
+
+            defaultTasks.forEach(cfg => {
+                const tile = document.getElementById(`task-tile-${cfg.id}`);
+                const status = document.getElementById(`task-status-${cfg.id}`);
+                const icon = document.getElementById(`task-icon-${cfg.id}`);
+                const sub = document.getElementById(`task-sub-${cfg.id}`);
+
+                tile.className = `ipad-btn ${cfg.bg} border-3 rounded-3xl p-4 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm relative hover:bg-slate-100`;
+                status.className = "absolute top-2 right-2 bg-rose-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full";
+                status.textContent = "未關 🔴";
+                icon.textContent = cfg.icon;
+                sub.textContent = cfg.sub;
+            });
+
+            document.getElementById('task-count-text').textContent = '[ 0 / 4 ] 已完成';
+            document.getElementById('live-health-bar').style.width = '15%';
+            document.getElementById('live-temp-display').textContent = '39.5°C';
+            document.getElementById('stage3-earth-avatar').textContent = '😵';
+            document.getElementById('s3-next-btn').className = "ipad-btn opacity-60 bg-slate-400 text-white font-black text-xl px-10 py-3.5 rounded-3xl shadow-lg flex items-center space-x-2 transition-all";
+            document.getElementById('s3-next-icon').textContent = "🔒";
+
+            // Reset Stage 4
+            for (let i = 1; i <= 4; i++) {
+                const btn = document.getElementById(`pledge-btn-${i}`);
+                const icon = document.getElementById(`pledge-icon-${i}`);
+                btn.className = "ipad-btn p-3 bg-white rounded-2xl border-2 border-sky-300 flex items-center justify-between font-black text-xs sm:text-sm text-sky-900 hover:bg-sky-100";
+                icon.textContent = '⚪';
+            }
+            document.getElementById('s4-progress-text').textContent = '[ 0 / 4 ] 請全按解鎖';
+            document.getElementById('s4-finish-btn').className = "ipad-btn opacity-60 bg-slate-400 text-white font-black text-lg sm:text-xl px-10 py-3.5 rounded-3xl shadow-lg flex items-center space-x-2 transition-all";
+            document.getElementById('s4-finish-icon').textContent = "🔒";
+
+            goToStage(0);
+        }
+
+        /* --- INITIALIZATION --- */
+        window.addEventListener('load', () => {
+            registerStage0Events();
+            registerStage1Events();
+            registerStage2Events();
+            registerStage3Events();
+            registerStage4Events();
+
+            // Unlock AudioContext and Speech on initial touch
+            const initEvents = ['touchstart', 'click', 'pointerdown'];
+            initEvents.forEach(evtName => {
+                window.addEventListener(evtName, () => {
+                    initAudioContext();
+                    loadCantoneseVoice();
+                }, { once: true });
+            });
+
+            // Trigger Stage 0 auto speech on page load
+            setTimeout(() => {
+                speakCantonese(autoStageSpeeches[0]);
+            }, 300);
+        });
+    </script>
+</body>
+</html>
