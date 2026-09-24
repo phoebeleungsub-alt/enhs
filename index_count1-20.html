@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>高對比語音順數遊戲</title>
+
+    <style>
+        /* 全局高對比黑底黃字設計 */
+        body {
+            background-color: black;
+            color: yellow;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        /* --- 開始頁設計 --- */
+        #start-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            text-align: center;
+        }
+
+        #prompt-text {
+            font-size: 8vw;
+            margin-bottom: 10px;
+            cursor: pointer;
+            padding: 20px;
+            border-radius: 15px;
+            background-color: rgba(255, 255, 0, 0.1);
+        }
+
+        #instruction {
+            font-size: 3vw;
+            color: #888;
+            margin: 0 30px 50px;
+        }
+
+        #start-btn {
+            background-color: yellow;
+            color: black;
+            font-size: 10vw;
+            font-weight: bold;
+            padding: 30px 60px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
+        }
+
+        #start-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* --- 遊戲頁設計 --- */
+        #game-screen {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            cursor: pointer;
+        }
+
+        #display {
+            font-size: 40vw;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+
+        .hint {
+            font-size: 4vw;
+            color: #888;
+            text-align: center;
+        }
+
+        .done {
+            color: #39FF14 !important;
+            font-size: 12vw !important;
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        #peppa-img {
+            display: none;
+            max-width: 80vw;
+            max-height: 45vh;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            object-fit: contain;
+        }
+
+        #restart-btn {
+            display: none;
+            margin-top: 30px;
+            padding: 18px 35px;
+            font-size: 5vw;
+            font-weight: bold;
+            color: black;
+            background-color: yellow;
+            border: none;
+            border-radius: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 開始頁面 -->
+    <div id="start-screen">
+        <h1 id="prompt-text">㩒制開始啦！</h1>
+
+        <p id="instruction">
+            （家長／老師請先點擊上方文字，播放語音提示）
+        </p>
+
+        <button id="start-btn">開 始</button>
+    </div>
+
+    <!-- 順數遊戲頁面 -->
+    <div id="game-screen">
+        <div id="display">1</div>
+
+        <div class="hint" id="hint">
+            請點擊螢幕順數
+        </div>
+
+        <img id="peppa-img" src="peppa.jpg" alt="Peppa Pig">
+
+        <button id="restart-btn">再玩一次</button>
+    </div>
+
+    <script>
+        let count = 1;
+        let gameStarted = false;
+        let isFinished = false;
+
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const startBtn = document.getElementById('start-btn');
+        const promptText = document.getElementById('prompt-text');
+        const instruction = document.getElementById('instruction');
+        const display = document.getElementById('display');
+        const hint = document.getElementById('hint');
+        const peppaImg = document.getElementById('peppa-img');
+        const restartBtn = document.getElementById('restart-btn');
+
+        /*
+         * 廣東話發音函數
+         */
+        function speakCantonese(text) {
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-HK';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.2;
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        /*
+         * 家長／老師點擊提示文字，播放語音
+         */
+        promptText.addEventListener('click', function (event) {
+            event.stopPropagation();
+            speakCantonese('㩒制開始啦！');
+        });
+
+        instruction.addEventListener('click', function (event) {
+            event.stopPropagation();
+            speakCantonese('㩒制開始啦！');
+        });
+
+        /*
+         * 開始遊戲
+         */
+        startBtn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            startGame();
+        });
+
+        function startGame() {
+            count = 1;
+            gameStarted = true;
+            isFinished = false;
+
+            display.classList.remove('done');
+            display.innerText = count;
+            hint.innerText = '請點擊螢幕順數';
+
+            peppaImg.style.display = 'none';
+            restartBtn.style.display = 'none';
+
+            startScreen.style.display = 'none';
+            gameScreen.style.display = 'flex';
+
+            // 讀出第一個數字
+            speakCantonese(count.toString());
+        }
+
+        /*
+         * 順數遊戲邏輯
+         */
+        function triggerAction(event) {
+            if (event && event.preventDefault) {
+                event.preventDefault();
+            }
+
+            if (!gameStarted || isFinished) {
+                return;
+            }
+
+            if (count < 20) {
+                count++;
+
+                display.innerText = count;
+                speakCantonese(count.toString());
+            } else {
+                finishGame();
+            }
+        }
+
+        /*
+         * 完成遊戲
+         */
+        function finishGame() {
+            isFinished = true;
+
+            display.innerText = '好叻呀！完成！';
+            display.classList.add('done');
+
+            hint.innerText = '你已經順數到 20！';
+            peppaImg.style.display = 'block';
+            restartBtn.style.display = 'block';
+
+            speakCantonese('收工啦！好耶！');
+        }
+
+        /*
+         * 點擊遊戲畫面進行順數
+         */
+        gameScreen.addEventListener('click', function (event) {
+            // 點擊重新開始按鈕時，不觸發順數
+            if (event.target === restartBtn) {
+                return;
+            }
+
+            triggerAction(event);
+        });
+
+        /*
+         * 支援觸控螢幕
+         */
+        gameScreen.addEventListener('touchstart', function (event) {
+            // 避免觸控按鈕時重複觸發
+            if (event.target === restartBtn) {
+                return;
+            }
+
+            triggerAction(event);
+        }, {
+            passive: false
+        });
+
+        /*
+         * 支援鍵盤：Space 或 Enter
+         */
+        window.addEventListener('keydown', function (event) {
+            if (event.code === 'Space' || event.code === 'Enter') {
+                event.preventDefault();
+
+                if (!gameStarted) {
+                    startGame();
+                } else {
+                    triggerAction(event);
+                }
+            }
+        });
+
+        /*
+         * 再玩一次
+         */
+        restartBtn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            startGame();
+        });
+    </script>
+
+</body>
+</html>
