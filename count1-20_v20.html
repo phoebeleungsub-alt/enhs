@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>眼動儀遊戲 - 氣球數數</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #000000;
+        }
+
+        body {
+            position: relative;
+        }
+
+        #startPage {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000000;
+        }
+
+        .start-balloon {
+            width: min(80vw, 600px);
+            height: min(80vw, 600px);
+            max-width: 600px;
+            max-height: 600px;
+            cursor: pointer;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 10px 30px rgba(0,0,0,0.3));
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-18px); }
+        }
+
+        #gamePage {
+            position: absolute;
+            inset: 0;
+            display: none;
+            background: #000000;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .balloon {
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.04s linear;
+            cursor: pointer;
+        }
+
+        .balloon svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 8px 20px rgba(0,0,0,0.25));
+        }
+
+        .balloon.popped {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .counter {
+            position: fixed;
+            top: 28px;
+            right: 28px;
+            font-size: clamp(32px, 4vw, 52px);
+            font-weight: bold;
+            color: white;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 14px 22px;
+            border-radius: 18px;
+            z-index: 20;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+        }
+
+        .info-text {
+            position: fixed;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 18px;
+            background: rgba(0,0,0,0.25);
+            padding: 12px 20px;
+            border-radius: 10px;
+            z-index: 20;
+        }
+
+        .gaze-indicator {
+            position: fixed;
+            width: 58px;
+            height: 58px;
+            border: 3px solid rgba(255, 0, 255, 0.9);
+            border-radius: 50%;
+            background: rgba(255, 0, 255, 0.18);
+            box-shadow: 0 0 18px rgba(255,0,255,0.8);
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        #endPage {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: #000000;
+            text-align: center;
+        }
+
+        .celebration {
+            font-size: clamp(52px, 7vw, 90px);
+            color: white;
+            font-weight: bold;
+            margin-bottom: 26px;
+            text-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .final-score {
+            font-size: clamp(28px, 4vw, 48px);
+            color: white;
+            background: rgba(0,0,0,0.18);
+            padding: 18px 30px;
+            border-radius: 20px;
+            margin-bottom: 28px;
+            font-weight: bold;
+        }
+
+        .restart-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-size: clamp(26px, 3vw, 36px);
+            font-weight: bold;
+            border: none;
+            border-radius: 30px;
+            padding: 18px 34px;
+            cursor: pointer;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.2);
+        }
+
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .particle-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            animation: particleFly 0.9s ease-out forwards;
+        }
+
+        @keyframes particleFly {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(0);
+            }
+        }
+
+        .confetti {
+            position: fixed;
+            width: 16px;
+            height: 16px;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div class="gaze-indicator" id="gazeIndicator" style="display:none;"></div>
+
+    <div id="startPage">
+        <svg class="start-balloon" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="100" cy="80" rx="70" ry="80" fill="#ff6ba7" opacity="0.95"/>
+            <ellipse cx="100" cy="80" rx="70" ry="80" fill="url(#grad)" opacity="0.3"/>
+            <ellipse cx="75" cy="50" rx="25" ry="35" fill="white" opacity="0.4"/>
+            <line x1="100" y1="160" x2="100" y2="220" stroke="#facc15" stroke-width="4"/>
+            <line x1="100" y1="220" x2="100" y2="240" stroke="#facc15" stroke-width="3"/>
+            <circle cx="100" cy="240" r="8" fill="#facc15"/>
+            <defs>
+                <radialGradient id="grad">
+                    <stop offset="0%" style="stop-color:#ff1493;stop-opacity:1"/>
+                    <stop offset="100%" style="stop-color:#ff6ba7;stop-opacity:1"/>
+                </radialGradient>
+            </defs>
+        </svg>
+    </div>
+
+    <div id="gamePage">
+        <div id="counter" class="counter">🎈 1</div>
+        <div id="gameContainer" class="game-container"></div>
+    </div>
+
+    <div id="endPage">
+        <div class="celebration">🎉 完成！ 🎉</div>
+        <div class="final-score">總共完成 20 個氣球</div>
+        <button class="restart-btn" onclick="location.reload()">再玩一次</button>
+    </div>
+
+    <script>
+        const TOTAL_ROUNDS = 20;
+        const GAZE_DURATION = 1000;
+
+        const CANTONESE_NUMBERS = {
+            1: '一', 2: '二', 3: '三', 4: '四', 5: '五',
+            6: '六', 7: '七', 8: '八', 9: '九', 10: '十',
+            11: '十一', 12: '十二', 13: '十三', 14: '十四', 15: '十五',
+            16: '十六', 17: '十七', 18: '十八', 19: '十九', 20: '二十'
+        };
+
+        const BALLOON_COLORS = [
+            '#FF6B9D', '#FF1493', '#FF69B4', '#FFA3B1',
+            '#FF4500', '#FF6347', '#FF8C00', '#FFA500',
+            '#00C853', '#00D084', '#00E676', '#00C9FF',
+            '#4169E1', '#1E90FF', '#80D8FF', '#00BFFF',
+            '#9B30FF', '#BA68C8', '#FFD740', '#F9A825'
+        ];
+
+        let currentRound = 1;
+        let totalBalloonsInRound = 1;
+        let balloonsPoppedInRound = 0;
+        let mouseX = 0, mouseY = 0;
+        let currentGazeTarget = null;
+        let gazeIntervalId = null;
+        let gazeStartTime = null;
+        let activeAudioContext = null;
+        let cantoneseVoice = null;
+        let voicesReady = false;
+
+        let startBalloon = document.querySelector('.start-balloon');
+
+        // 初始化音訊上下文和背景音樂
+        function initAudioContext() {
+            try {
+                if (!activeAudioContext) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    activeAudioContext = new AudioCtx();
+                }
+                
+                if (activeAudioContext.state === 'suspended') {
+                    activeAudioContext.resume().then(() => {
+                        // 背景音樂只在瀏覽器允許播放後啟動
+                        playBackgroundMusic();
+                    }).catch(() => {});
+                } else {
+                    playBackgroundMusic();
+                }
+            } catch (e) {
+                console.log('音訊初始化錯誤：', e);
+            }
+        }
+
+        function init() {
+            bindStartBalloon();
+            updateGazeIndicator();
+
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                updateGazeIndicator();
+                handleGazeFromMouse(mouseX, mouseY);
+            });
+
+            // 電腦瀏覽器通常只允許在使用者操作後播放音效。
+            // 第一次點擊、觸控或按鍵時解鎖 Web Audio 與語音。
+            const unlockAudio = () => {
+                initAudioContext();
+                try {
+                    if (window.speechSynthesis) {
+                        window.speechSynthesis.getVoices();
+                    }
+                } catch (e) {}
+                if (activeAudioContext && activeAudioContext.state === 'suspended') activeAudioContext.resume().catch(() => {});
+                document.removeEventListener('pointerdown', unlockAudio);
+                document.removeEventListener('keydown', unlockAudio);
+            };
+            document.addEventListener('pointerdown', unlockAudio, { once: true });
+            document.addEventListener('keydown', unlockAudio, { once: true });
+
+            // 不在頁面載入時自動播放音訊，避免被電腦瀏覽器的自動播放政策阻擋。
+            // 音訊會在使用者第一次點擊／開始遊戲時解鎖。
+        }
+
+        function bindStartBalloon() {
+            startBalloon.addEventListener('mouseenter', () => {
+                startGazeTimer(startBalloon);
+            });
+            startBalloon.addEventListener('mouseleave', stopGazeTimer);
+            startBalloon.addEventListener('click', startGame);
+        }
+
+        function startGame() {
+            // 若開始遊戲是由滑鼠點擊觸發，這裡可直接取得瀏覽器的音訊播放權限。
+            initAudioContext();
+            try {
+                if (activeAudioContext && activeAudioContext.state === 'suspended') {
+                    activeAudioContext.resume();
+                }
+            } catch (e) {}
+
+            // 由使用者操作開始遊戲後啟動背景音樂，符合瀏覽器音訊政策。
+            playBackgroundMusic();
+
+            // 開始遊戲這個使用者操作會同時取得語音播放權限。
+            waitForVoices().then(() => {
+                try {
+                    if ('speechSynthesis' in window) {
+                        const warmup = new SpeechSynthesisUtterance(' ');
+                        warmup.volume = 0;
+                        warmup.rate = 10;
+                        if (cantoneseVoice) warmup.voice = cantoneseVoice;
+                        warmup.lang = cantoneseVoice?.lang || 'zh-HK';
+                        window.speechSynthesis.speak(warmup);
+                        setTimeout(() => window.speechSynthesis.cancel(), 20);
+                    }
+                } catch (e) {}
+            });
+
+            document.getElementById('startPage').style.display = 'none';
+            document.getElementById('gamePage').style.display = 'block';
+            currentRound = 1;
+            balloonsPoppedInRound = 0;
+            totalBalloonsInRound = currentRound;
+            createRoundBalloons();
+            updateCounter();
+        }
+
+        function updateCounter() {
+            document.getElementById('counter').textContent = `🎈 ${currentRound}`;
+        }
+
+        function createRoundBalloons() {
+            const container = document.getElementById('gameContainer');
+            container.innerHTML = '';
+            totalBalloonsInRound = currentRound;
+            balloonsPoppedInRound = 0;
+
+            const positions = generateCenterFirstPositions(totalBalloonsInRound);
+
+            positions.forEach((pos, idx) => {
+                const balloon = document.createElement('div');
+                balloon.className = 'balloon';
+                balloon.style.left = pos.x + 'px';
+                balloon.style.top = pos.y + 'px';
+                balloon.style.width = pos.size + 'px';
+                balloon.style.height = pos.size + 'px';
+
+                const color = BALLOON_COLORS[idx % BALLOON_COLORS.length];
+                balloon.innerHTML = `
+                    <svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
+                        <ellipse cx="100" cy="80" rx="70" ry="80" fill="${color}" opacity="0.95"/>
+                        <ellipse cx="100" cy="80" rx="70" ry="80" fill="url(#grad${idx})" opacity="0.3"/>
+                        <ellipse cx="75" cy="50" rx="25" ry="35" fill="white" opacity="0.38"/>
+                        <line x1="100" y1="160" x2="100" y2="220" stroke="#facc15" stroke-width="4"/>
+                        <line x1="100" y1="220" x2="100" y2="240" stroke="#facc15" stroke-width="3"/>
+                        <circle cx="100" cy="240" r="8" fill="#facc15"/>
+                        <defs>
+                            <radialGradient id="grad${idx}">
+                                <stop offset="0%" style="stop-color:#ff1493;stop-opacity:1"/>
+                                <stop offset="100%" style="stop-color:${color};stop-opacity:1"/>
+                            </radialGradient>
+                        </defs>
+                    </svg>
+                `;
+
+                balloon.addEventListener('mouseenter', () => {
+                    startGazeTimer(balloon);
+                });
+
+                balloon.addEventListener('mouseleave', () => {
+                    if (currentGazeTarget === balloon) stopGazeTimer();
+                });
+
+                container.appendChild(balloon);
+            });
+        }
+
+        function generateCenterFirstPositions(count) {
+            const container = document.getElementById('gameContainer');
+            const containerW = Math.max(1, container.clientWidth || window.innerWidth);
+            const containerH = Math.max(1, container.clientHeight || window.innerHeight);
+            const padding = 16;
+            const gap = 12;
+            const maxSize = 250;
+
+            // Find the grid that gives each balloon the largest possible cell.
+            // Cell gaps and outer padding are included in the calculation so balloons
+            // remain separated and fully visible at every screen size.
+            let best = null;
+            for (let cols = 1; cols <= count; cols++) {
+                const rows = Math.ceil(count / cols);
+                const usableW = containerW - padding * 2 - gap * (cols - 1);
+                const usableH = containerH - padding * 2 - gap * (rows - 1);
+                const size = Math.floor(Math.min(
+                    maxSize,
+                    usableW / cols,
+                    usableH / rows
+                ));
+                if (size > 0 && (!best || size > best.size)) {
+                    best = { cols, rows, size };
+                }
+            }
+
+            // Extremely small windows still get an on-screen, non-overlapping layout.
+            if (!best) {
+                best = { cols: count, rows: 1, size: Math.max(1,
+                    Math.floor((containerW - padding * 2 - gap * (count - 1)) / count)) };
+            }
+
+            const { cols, rows, size } = best;
+            const gridW = cols * size + (cols - 1) * gap;
+            const gridH = rows * size + (rows - 1) * gap;
+            const startX = Math.max(0, (containerW - gridW) / 2);
+            const startY = Math.max(0, (containerH - gridH) / 2);
+            const positions = [];
+
+            for (let i = 0; i < count; i++) {
+                const r = Math.floor(i / cols);
+                const c = i % cols;
+                positions.push({
+                    x: startX + c * (size + gap),
+                    y: startY + r * (size + gap),
+                    size
+                });
+            }
+
+            // The first balloon is placed in the grid cell nearest the screen center.
+            const centerX = containerW / 2;
+            const centerY = containerH / 2;
+            positions.sort((a, b) => {
+                const ax = a.x + a.size / 2, ay = a.y + a.size / 2;
+                const bx = b.x + b.size / 2, by = b.y + b.size / 2;
+                return Math.hypot(ax - centerX, ay - centerY) -
+                       Math.hypot(bx - centerX, by - centerY);
+            });
+            return positions;
+        }
+
+        // Re-layout active balloons after a resize so they remain centered and on-screen.
+        window.addEventListener('resize', () => {
+            if (document.getElementById('gamePage').style.display !== 'none' &&
+                document.getElementById('gameContainer').children.length) {
+                const balloons = Array.from(document.querySelectorAll('#gameContainer .balloon:not(.popped)'));
+                const positions = generateCenterFirstPositions(balloons.length);
+                balloons.forEach((balloon, i) => {
+                    const pos = positions[i];
+                    balloon.style.left = pos.x + 'px';
+                    balloon.style.top = pos.y + 'px';
+                    balloon.style.width = pos.size + 'px';
+                    balloon.style.height = pos.size + 'px';
+                    balloon.style.transform = 'scale(1)';
+                });
+            }
+        });
+
+        function handleGazeFromMouse(mouseX, mouseY) {
+            if (!document.getElementById('gamePage').style.display || document.getElementById('gamePage').style.display === 'none') return;
+
+            const target = document.elementFromPoint(mouseX, mouseY);
+            if (!target) return;
+
+            const balloon = target.closest('.balloon');
+            if (balloon) {
+                startGazeTimer(balloon);
+            } else if (currentGazeTarget) {
+                stopGazeTimer();
+            }
+        }
+
+        function startGazeTimer(element) {
+            if (!element) return;
+
+            if (element === startBalloon) {
+                currentGazeTarget = element;
+            } else if (!element.classList.contains('balloon')) {
+                return;
+            }
+
+            if (currentGazeTarget === element && gazeIntervalId) return;
+
+            stopGazeTimer();
+            currentGazeTarget = element;
+            gazeStartTime = performance.now();
+
+            gazeIntervalId = setInterval(() => {
+                if (!currentGazeTarget || !gazeStartTime) return;
+
+                const elapsed = performance.now() - gazeStartTime;
+                const progress = Math.min(elapsed / GAZE_DURATION, 1);
+                const scale = 1 + progress * 0.3;
+
+                currentGazeTarget.style.transform = `scale(${scale})`;
+
+                if (elapsed >= GAZE_DURATION) {
+                    triggerGazeComplete();
+                }
+            }, 30);
+        }
+
+        function stopGazeTimer() {
+            if (gazeIntervalId) {
+                clearInterval(gazeIntervalId);
+                gazeIntervalId = null;
+            }
+
+            if (currentGazeTarget) {
+                currentGazeTarget.style.transform = 'scale(1)';
+                currentGazeTarget = null;
+            }
+
+            gazeStartTime = null;
+        }
+
+        function triggerGazeComplete() {
+            if (!currentGazeTarget) return;
+
+            const target = currentGazeTarget;
+
+            if (target === startBalloon) {
+                startGame();
+                stopGazeTimer();
+                return;
+            }
+
+            if (target.classList.contains('balloon')) {
+                popBalloon(target);
+            }
+
+            stopGazeTimer();
+        }
+
+        function popBalloon(balloon) {
+            if (!balloon || balloon.classList.contains('popped')) return;
+
+            balloon.classList.add('popped');
+            playPopSound();
+            createExplosion(balloon);
+
+            // 由第一個爆破開始同步報粵語數字：「一、二、三……」
+            balloonsPoppedInRound++;
+            speakNumber(balloonsPoppedInRound);
+
+            if (balloonsPoppedInRound >= totalBalloonsInRound) {
+                // 全部爆破後，再提醒該輪氣球總量
+                setTimeout(() => {
+                    speakText(`${totalBalloonsInRound}個`);
+
+                    setTimeout(() => {
+                        if (currentRound >= TOTAL_ROUNDS) {
+                            endGame();
+                        } else {
+                            currentRound++;
+                            updateCounter();
+                            createRoundBalloons();
+
+                            // 新一輪開始時先讀出該輪需要完成的氣球數量
+                            speakText(`${currentRound}個`);
+                        }
+                    }, 1200);
+                }, 500);
+            }
+        }
+
+        function endGame() {
+            stopBackgroundMusic();
+            document.getElementById('gamePage').style.display = 'none';
+            document.getElementById('endPage').style.display = 'flex';
+            createConfetti();
+            playCelebrationSound();
+            speakText(`全部完成，總共有${TOTAL_ROUNDS}個氣球`);
+        }
+
+        function createExplosion(balloonElement) {
+            const rect = balloonElement.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const colors = ['#FF6B9D', '#FF1493', '#FFD700', '#00FFFF', '#FF4500', '#FF6347', '#32CD32'];
+
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = centerX + 'px';
+                particle.style.top = centerY + 'px';
+
+                const dot = document.createElement('div');
+                dot.className = 'particle-dot';
+                dot.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+                const angle = (i / 30) * Math.PI * 2;
+                const distance = 280 + Math.random() * 200;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+
+                dot.style.setProperty('--tx', tx + 'px');
+                dot.style.setProperty('--ty', ty + 'px');
+
+                particle.appendChild(dot);
+                document.body.appendChild(particle);
+
+                setTimeout(() => particle.remove(), 900);
+            }
+        }
+
+        function createConfetti() {
+            for (let i = 0; i < 50; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * window.innerWidth + 'px';
+                c.style.top = '-20px';
+                c.style.backgroundColor = BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
+                c.style.animation = `fall ${2 + Math.random() * 2}s linear forwards`;
+                document.body.appendChild(c);
+                setTimeout(() => c.remove(), 4000);
+            }
+
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fall {
+                    to {
+                        opacity: 0;
+                        transform: translateY(${window.innerHeight + 100}px) rotateZ(360deg);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        let backgroundMusicTimer = null;
+        let backgroundMusicEnabled = false;
+
+        function playBackgroundMusic() {
+            try {
+                if (!activeAudioContext) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtx) return;
+                    activeAudioContext = new AudioCtx();
+                }
+                const ctx = activeAudioContext;
+                if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+                if (backgroundMusicEnabled) return;
+                backgroundMusicEnabled = true;
+
+                const notes = [440, 494, 523.25, 587.33, 659.25, 587.33, 523.25, 494];
+                let noteIndex = 0;
+                const playNote = () => {
+                    if (!backgroundMusicEnabled || !activeAudioContext) return;
+                    const audio = activeAudioContext;
+                    if (audio.state === 'suspended') audio.resume().catch(() => {});
+                    const osc = audio.createOscillator();
+                    const gain = audio.createGain();
+                    const now = audio.currentTime;
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(notes[noteIndex % notes.length], now);
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.linearRampToValueAtTime(0.10, now + 0.025);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.20);
+                    osc.connect(gain);
+                    gain.connect(audio.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.22);
+                    noteIndex++;
+                };
+                playNote();
+                backgroundMusicTimer = setInterval(playNote, 240);
+            } catch (e) {
+                console.log('背景音樂播放錯誤：', e);
+            }
+        }
+
+        function stopBackgroundMusic() {
+            backgroundMusicEnabled = false;
+            if (backgroundMusicTimer) {
+                clearInterval(backgroundMusicTimer);
+                backgroundMusicTimer = null;
+            }
+        }
+
+        function playPopSound() {
+            try {
+                if (!activeAudioContext) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    activeAudioContext = new AudioCtx();
+                }
+
+                const ctx = activeAudioContext;
+                if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+                const now = ctx.currentTime;
+
+                const configs = [
+                    { type: 'sine', f1: 1200, f2: 200, gain: 0.85, dur: 0.18 },
+                    { type: 'sine', f1: 300, f2: 50, gain: 0.95, dur: 0.22 },
+                    { type: 'sine', f1: 800, f2: 160, gain: 0.72, dur: 0.13 },
+                    { type: 'square', f1: 2000, f2: 700, gain: 0.65, dur: 0.09 }
+                ];
+
+                configs.forEach((cfg, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = cfg.type;
+                    osc.frequency.setValueAtTime(cfg.f1, now + idx * 0.02);
+                    osc.frequency.exponentialRampToValueAtTime(cfg.f2, now + idx * 0.02 + cfg.dur);
+
+                    gain.gain.setValueAtTime(cfg.gain, now + idx * 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.02 + cfg.dur);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(now + idx * 0.02);
+                    osc.stop(now + idx * 0.02 + cfg.dur);
+                });
+            } catch (e) {
+                console.log('爆破音效錯誤：', e);
+            }
+        }
+
+        function playCelebrationSound() {
+            try {
+                if (!activeAudioContext) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    activeAudioContext = new AudioCtx();
+                }
+
+                const ctx = activeAudioContext;
+                if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+                const now = ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.5, 1046.5, 783.99, 659.25];
+
+                notes.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    const t = now + idx * 0.15;
+                    gain.gain.setValueAtTime(0.35, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+                    osc.start(t);
+                    osc.stop(t + 0.28);
+                });
+            } catch (e) {
+                console.log('結束音效錯誤：', e);
+            }
+        }
+
+        function loadCantoneseVoice() {
+            if (!('speechSynthesis' in window)) return null;
+
+            const voices = window.speechSynthesis.getVoices() || [];
+
+            // 優先真正的香港粵語語音。
+            cantoneseVoice =
+                voices.find(v => /^zh-HK$/i.test(v.lang)) ||
+                voices.find(v => /^yue[-_]HK$/i.test(v.lang)) ||
+                voices.find(v => /zh[-_]HK/i.test(v.lang)) ||
+                voices.find(v => /yue/i.test(v.lang)) ||
+                voices.find(v => /Cantonese|粵語|廣東話/i.test(v.name)) ||
+                null;
+
+            voicesReady = voices.length > 0;
+            return cantoneseVoice;
+        }
+
+        function waitForVoices(timeout = 2500) {
+            return new Promise(resolve => {
+                if (!('speechSynthesis' in window)) {
+                    resolve(null);
+                    return;
+                }
+
+                const existing = loadCantoneseVoice();
+                if (existing) {
+                    resolve(existing);
+                    return;
+                }
+
+                let finished = false;
+
+                const finish = () => {
+                    if (finished) return;
+                    finished = true;
+                    window.speechSynthesis.removeEventListener('voiceschanged', onChanged);
+                    resolve(loadCantoneseVoice());
+                };
+
+                const onChanged = () => {
+                    if (loadCantoneseVoice()) finish();
+                };
+
+                window.speechSynthesis.addEventListener('voiceschanged', onChanged);
+
+                // 有些 Windows / Chrome 環境不會觸發 voiceschanged，
+                // 所以定時重新讀取語音清單。
+                const timer = setInterval(() => {
+                    if (loadCantoneseVoice()) {
+                        clearInterval(timer);
+                        finish();
+                    }
+                }, 100);
+
+                setTimeout(() => {
+                    clearInterval(timer);
+                    finish();
+                }, timeout);
+            });
+        }
+
+        async function speakText(text) {
+            try {
+                if (!('speechSynthesis' in window)) {
+                    console.log('此瀏覽器不支援粵語語音');
+                    return;
+                }
+
+                // 每次報數前確保語音引擎已載入並恢復。
+                if (!voicesReady || !cantoneseVoice) {
+                    await waitForVoices();
+                }
+
+                window.speechSynthesis.resume();
+
+                const u = new SpeechSynthesisUtterance(String(text));
+
+                if (cantoneseVoice) {
+                    u.voice = cantoneseVoice;
+                    u.lang = cantoneseVoice.lang || 'zh-HK';
+                } else {
+                    // 即使電腦沒有香港粵語 voice，也要求瀏覽器以 zh-HK 嘗試。
+                    u.lang = 'zh-HK';
+                }
+
+                u.rate = 0.90;
+                u.pitch = 1.08;
+                u.volume = 1.0;
+
+                u.onerror = (event) => {
+                    console.log('粵語語音播放錯誤：', event.error);
+                    // 某些瀏覽器 speechSynthesis 會卡住，嘗試恢復。
+                    try {
+                        window.speechSynthesis.resume();
+                    } catch (e) {}
+                };
+
+                // 不使用長時間佇列；每次只保留最新的數數。
+                window.speechSynthesis.cancel();
+
+                // 延遲一個 event loop，讓 cancel() 完成後再 speak，
+                // 對 Windows Chrome / Edge 的本地 HTML 特別重要。
+                setTimeout(() => {
+                    try {
+                        window.speechSynthesis.resume();
+                        window.speechSynthesis.speak(u);
+                    } catch (e) {
+                        console.log('粵語語音錯誤：', e);
+                    }
+                }, 40);
+
+            } catch (e) {
+                console.log('語音錯誤：', e);
+            }
+        }
+
+        // 頁面載入後主動載入電腦的語音清單。
+        if ('speechSynthesis' in window) {
+            loadCantoneseVoice();
+            window.speechSynthesis.addEventListener('voiceschanged', () => {
+                loadCantoneseVoice();
+            });
+        }
+
+        function speakNumber(value) {
+            const text = CANTONESE_NUMBERS[value] || String(value);
+            speakText(text);
+        }
+
+        function updateGazeIndicator() {
+            const indicator = document.getElementById('gazeIndicator');
+            indicator.style.left = (mouseX - 29) + 'px';
+            indicator.style.top = (mouseY - 29) + 'px';
+        }
+
+        init();
+    </script>
+</body>
+</html>
